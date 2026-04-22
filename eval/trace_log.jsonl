@@ -1,0 +1,10 @@
+{"trace_id": "tau_dev_tier_baseline_01", "run_label": "dev_tier_baseline", "domain": "retail", "task_id": "retail_dev_01", "pass": 0, "timestamp": "2026-04-22T12:13:27.775617+00:00"}
+{"trace_id": "tau_dev_tier_baseline_02", "run_label": "dev_tier_baseline", "domain": "retail", "task_id": "retail_dev_02", "pass": 0, "timestamp": "2026-04-22T12:13:27.775617+00:00"}
+{"trace_id": "tau_dev_tier_baseline_03", "run_label": "dev_tier_baseline", "domain": "retail", "task_id": "retail_dev_03", "pass": 1, "timestamp": "2026-04-22T12:13:27.775617+00:00"}
+{"trace_id": "tau_dev_tier_baseline_04", "run_label": "dev_tier_baseline", "domain": "retail", "task_id": "retail_dev_04", "pass": 1, "timestamp": "2026-04-22T12:13:27.775617+00:00"}
+{"trace_id": "tau_dev_tier_baseline_05", "run_label": "dev_tier_baseline", "domain": "retail", "task_id": "retail_dev_05", "pass": 1, "timestamp": "2026-04-22T12:13:27.775617+00:00"}
+{"trace_id": "tau_reproduction_check_01", "run_label": "reproduction_check", "domain": "retail", "task_id": "retail_dev_01", "pass": 1, "timestamp": "2026-04-22T12:13:27.789780+00:00"}
+{"trace_id": "tau_reproduction_check_02", "run_label": "reproduction_check", "domain": "retail", "task_id": "retail_dev_02", "pass": 0, "timestamp": "2026-04-22T12:13:27.790779+00:00"}
+{"trace_id": "tau_reproduction_check_03", "run_label": "reproduction_check", "domain": "retail", "task_id": "retail_dev_03", "pass": 0, "timestamp": "2026-04-22T12:13:27.790779+00:00"}
+{"trace_id": "tau_reproduction_check_04", "run_label": "reproduction_check", "domain": "retail", "task_id": "retail_dev_04", "pass": 1, "timestamp": "2026-04-22T12:13:27.790779+00:00"}
+{"trace_id": "tau_reproduction_check_05", "run_label": "reproduction_check", "domain": "retail", "task_id": "retail_dev_05", "pass": 1, "timestamp": "2026-04-22T12:13:27.790779+00:00"}

@@ -1,0 +1,8 @@
+{
+  "model_name": "PINNED_BY_PROGRAM_STAFF",
+  "temperature": 0.2,
+  "max_tokens": 2048,
+  "domain": "retail",
+  "dev_slice_tasks": 30,
+  "held_out_tasks": 20
+}

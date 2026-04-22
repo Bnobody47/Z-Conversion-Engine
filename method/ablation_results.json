@@ -1,0 +1,23 @@
+{
+  "baseline": {
+    "pass_at_1": null,
+    "ci95_low": null,
+    "ci95_high": null,
+    "cost_per_task_usd": null,
+    "p95_latency_s": null
+  },
+  "your_method": {
+    "pass_at_1": null,
+    "ci95_low": null,
+    "ci95_high": null,
+    "cost_per_task_usd": null,
+    "p95_latency_s": null
+  },
+  "auto_opt_baseline": {
+    "pass_at_1": null,
+    "ci95_low": null,
+    "ci95_high": null,
+    "cost_per_task_usd": null,
+    "p95_latency_s": null
+  }
+}

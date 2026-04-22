@@ -1,0 +1,24 @@
+[
+  {
+    "label": "dev_tier_baseline",
+    "mean_pass_at_1": 0.4333,
+    "ci95_low": 0.3749,
+    "ci95_high": 0.4918,
+    "trials": 5,
+    "cost_per_eval_usd": 1.42,
+    "p50_latency_s": 3.4,
+    "p95_latency_s": 5.8,
+    "updated_at": "2026-04-22T12:13:27.773617+00:00"
+  },
+  {
+    "label": "reproduction_check",
+    "mean_pass_at_1": 0.4,
+    "ci95_low": 0.3284,
+    "ci95_high": 0.4716,
+    "trials": 5,
+    "cost_per_eval_usd": 1.37,
+    "p50_latency_s": 3.3,
+    "p95_latency_s": 5.9,
+    "updated_at": "2026-04-22T12:13:27.776620+00:00"
+  }
+]
