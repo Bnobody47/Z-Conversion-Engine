@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 
@@ -240,6 +240,52 @@ def inbound_message(message: InboundMessage) -> dict[str, Any]:
     _trace_interaction(message.lead_id, message.channel, latency_ms, {"action": "nurture_reply"})
     _hubspot_write("conversation_event", message.lead_id, {"channel": message.channel, "message": message.message})
     return {"status": "ok", "reply": reply}
+
+
+@app.post("/webhooks/resend")
+async def resend_webhook(request: Request) -> dict[str, Any]:
+    """
+    Webhook endpoint for Resend reply/inbound events.
+    """
+    payload = await request.json()
+    lead_id = str(payload.get("lead_id", "lead_unknown"))
+    message = str(payload.get("text", payload.get("subject", "")))
+    return inbound_message(InboundMessage(lead_id=lead_id, channel="email", message=message))
+
+
+@app.post("/webhooks/africastalking")
+async def africas_talking_webhook(request: Request) -> dict[str, Any]:
+    """
+    Webhook endpoint for Africa's Talking inbound SMS callbacks.
+    """
+    payload = await request.json()
+    lead_id = str(payload.get("lead_id", "lead_unknown"))
+    message = str(payload.get("text", ""))
+    return inbound_message(InboundMessage(lead_id=lead_id, channel="sms", message=message))
+
+
+@app.post("/webhooks/cal")
+async def cal_webhook(request: Request) -> dict[str, str]:
+    """
+    Webhook endpoint for Cal.com booking events.
+    """
+    payload = await request.json()
+    lead_id = str(payload.get("lead_id", "lead_unknown"))
+    event_type = str(payload.get("triggerEvent", "booking_event"))
+    _hubspot_write("calendar_event", lead_id, {"event_type": event_type, "payload": payload})
+    _trace_interaction(lead_id, "email", random.randint(700, 1400), {"action": "calendar_webhook"})
+    return {"status": "ok", "message": "calendar event processed"}
+
+
+@app.post("/webhooks/hubspot")
+async def hubspot_webhook(request: Request) -> dict[str, str]:
+    """
+    Optional endpoint if HubSpot app webhooks are configured.
+    """
+    payload = await request.json()
+    lead_id = str(payload.get("lead_id", "lead_unknown"))
+    _hubspot_write("hubspot_webhook", lead_id, payload)
+    return {"status": "ok", "message": "hubspot webhook received"}
 
 
 @app.get("/metrics/latency")

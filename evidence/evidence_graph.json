@@ -1,0 +1,10 @@
+{
+  "claims": [
+    {
+      "claim_id": "placeholder_claim",
+      "description": "Replace with audited numeric claim",
+      "source_ref": "trace_or_invoice_ref",
+      "recompute_formula": "TBD"
+    }
+  ]
+}

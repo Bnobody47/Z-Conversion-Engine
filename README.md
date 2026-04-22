@@ -22,16 +22,26 @@ flowchart TD
 ## Repository Layout
 
 - `agent/`
-  - `main.py`: FastAPI app with email/SMS webhook handlers, qualification logic, enrichment pipeline, HubSpot and Cal adapters.
-  - `seed_demo_data.py`: creates 20 synthetic interaction traces for latency reporting.
-  - `requirements.txt`: Python dependencies.
-  - `data/`: generated runtime artifacts (`interaction_traces.jsonl`, `hubspot_events.jsonl`, `cal_bookings.jsonl`).
+  - `main.py`: FastAPI runtime app.
+  - `adapters/`: provider boundaries for email, SMS, HubSpot, calendar, tracing.
+  - `enrichment/`: Crunchbase, hiring-signal, and competitor-gap modules.
+  - `guardrails/`: policy checks (over-claim prevention hooks).
+  - `services/`: orchestration services.
+  - `models/`: schema layer.
+  - `config.py`, `requirements.txt`, `seed_demo_data.py`, `data/`.
 - `eval/`
-  - `run_tau2_baseline.py`: baseline and reproduction scoring harness.
-  - `score_log.json`: Act I baseline metrics (mean pass@1, 95% CI, cost, latency).
-  - `trace_log.jsonl`: trajectory-level traces for eval runs.
-- `baseline.md`: <=400 word baseline note.
-- `interim_report.md`: interim PDF-source content (export to PDF).
+  - `run_tau2_baseline.py`: current baseline harness.
+  - `harness/`: dev-slice and held-out runner placeholders.
+  - `configs/`: pinned model settings template.
+  - `artifacts/`: generated eval outputs.
+  - `score_log.json`, `trace_log.jsonl`.
+- `probes/`: Act III files (`probe_library.md`, `failure_taxonomy.md`, `target_failure_mode.md`).
+- `method/`: Act IV files (`method.md`, `ablation_results.json`, `held_out_traces.jsonl`).
+- `evidence/`: claim-to-trace/invoice mapping files.
+- `memo/`: Act V memo draft.
+- `docs/`: submission checklist.
+- `scripts/`: bootstrap/export helper scripts.
+- Root docs: `baseline.md`, `interim_report.md`.
 
 ## Setup
 
@@ -55,6 +65,14 @@ flowchart TD
 - `POST /webhooks/inbound`
   - Handles `email` and `sms` interactions.
   - STOP/HELP/UNSUB compliance handling included.
+- `POST /webhooks/resend`
+  - Resend inbound/reply webhook endpoint.
+- `POST /webhooks/africastalking`
+  - Africa's Talking SMS callback endpoint.
+- `POST /webhooks/cal`
+  - Cal.com booking webhook endpoint.
+- `POST /webhooks/hubspot`
+  - Optional HubSpot app webhook endpoint.
 - `GET /metrics/latency`
   - Returns count, p50, p95, and mean from interaction traces.
 
@@ -75,3 +93,17 @@ flowchart TD
 
 - This submission is challenge-safe and synthetic-data-first.
 - Replace adapter sinks with live provider clients (Resend/MailerSend, Africa's Talking, HubSpot MCP, Cal.com API) by updating the adapter functions in `agent/main.py`.
+
+## Render Deployment (Recommended)
+
+This repo includes `render.yaml` for Render free-tier deployment.
+
+1. Push this repository to GitHub.
+2. In Render, choose **New +** -> **Blueprint** and select the repo.
+3. Render will read `render.yaml` and deploy `uvicorn agent.main:app`.
+4. After deploy, copy your public base URL, then register:
+   - Resend webhook: `https://<your-render-url>/webhooks/resend`
+   - Africa's Talking callback: `https://<your-render-url>/webhooks/africastalking`
+   - Cal.com webhook: `https://<your-render-url>/webhooks/cal`
+   - HubSpot webhook (optional): `https://<your-render-url>/webhooks/hubspot`
+5. Set env vars in Render dashboard using `.env.example` as reference.
