@@ -20,10 +20,10 @@ def run_enrichment(
     prospect_domain: str,
     seed_repo_path: str,
 ) -> dict[str, Any]:
-    funding = _lookup_crunchbase_signal(company_name)
-    jobs = _scrape_job_posts_public(company_name, prospect_domain)
-    layoffs = _fetch_layoff_signal(company_name)
-    leadership = _detect_leadership_change(company_name, prospect_domain)
+    funding = _with_confidence_schema(_lookup_crunchbase_signal(company_name))
+    jobs = _with_confidence_schema(_scrape_job_posts_public(company_name, prospect_domain))
+    layoffs = _with_confidence_schema(_fetch_layoff_signal(company_name))
+    leadership = _with_confidence_schema(_detect_leadership_change(company_name, prospect_domain))
 
     segment, confidence = _classify_segment(funding, jobs, layoffs, leadership)
     ai_score, ai_conf = _score_ai_maturity(jobs, leadership)
@@ -50,6 +50,8 @@ def run_enrichment(
             "open_roles_60_days_ago": jobs["open_roles_60_days_ago"],
             "velocity_label": jobs["velocity_label"],
             "signal_confidence": jobs["signal_confidence"],
+            "confidence_score": jobs["confidence_score"],
+            "confidence_label": jobs["confidence_label"],
             "sources": jobs["sources"],
         },
         "buying_window_signals": {
@@ -79,6 +81,7 @@ def _lookup_crunchbase_signal(company_name: str) -> dict[str, Any]:
         "closed_at": (datetime.now(timezone.utc) - timedelta(days=120)).date().isoformat() if detected else None,
         "source_url": "https://github.com/luminati-io/Crunchbase-dataset-samples",
         "status": "success",
+        "signal_confidence": 0.82 if detected else 0.58,
     }
 
 
@@ -134,7 +137,7 @@ def _fetch_layoff_signal(company_name: str) -> dict[str, Any]:
         with httpx.Client(timeout=8) as client:
             response = client.get(source)
         if response.status_code >= 400:
-            return {"detected": False, "status": "no_data", "source_url": source}
+            return {"detected": False, "status": "no_data", "source_url": source, "signal_confidence": 0.35}
         text = response.text.lower()
         detected = company_name.lower() in text
         return {
@@ -144,9 +147,10 @@ def _fetch_layoff_signal(company_name: str) -> dict[str, Any]:
             "percentage_cut": 12.5 if detected else 0.0,
             "source_url": source,
             "status": "success",
+            "signal_confidence": 0.78 if detected else 0.55,
         }
     except Exception:  # pylint: disable=broad-except
-        return {"detected": False, "status": "error", "source_url": source}
+        return {"detected": False, "status": "error", "source_url": source, "signal_confidence": 0.2}
 
 
 def _detect_leadership_change(company_name: str, domain: str) -> dict[str, Any]:
@@ -164,10 +168,32 @@ def _detect_leadership_change(company_name: str, domain: str) -> dict[str, Any]:
                     "started_at": (datetime.now(timezone.utc) - timedelta(days=45)).date().isoformat(),
                     "source_url": url,
                     "status": "success",
+                    "signal_confidence": 0.76,
                 }
         except Exception:  # pylint: disable=broad-except
             continue
-    return {"detected": False, "role": "none", "source_url": f"https://{domain}", "status": "no_data"}
+    return {
+        "detected": False,
+        "role": "none",
+        "source_url": f"https://{domain}",
+        "status": "no_data",
+        "signal_confidence": 0.4,
+    }
+
+
+def _with_confidence_schema(signal_data: dict[str, Any]) -> dict[str, Any]:
+    score = float(signal_data.get("signal_confidence", 0.5))
+    score = max(0.0, min(score, 1.0))
+    if score >= 0.75:
+        label = "high"
+    elif score >= 0.5:
+        label = "medium"
+    else:
+        label = "low"
+    signal_data["signal_confidence"] = score
+    signal_data["confidence_score"] = score
+    signal_data["confidence_label"] = label
+    return signal_data
 
 
 def _classify_segment(funding: dict[str, Any], jobs: dict[str, Any], layoffs: dict[str, Any], leadership: dict[str, Any]) -> tuple[str, float]:
