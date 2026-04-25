@@ -5,9 +5,12 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib import robotparser
 from typing import Any
 
 import httpx
+
+from agent.enrichment.ai_maturity import collect_ai_maturity_signals, score_ai_maturity
 
 
 def _now_iso() -> str:
@@ -26,7 +29,15 @@ def run_enrichment(
     leadership = _with_confidence_schema(_detect_leadership_change(company_name, prospect_domain))
 
     segment, confidence = _classify_segment(funding, jobs, layoffs, leadership)
-    ai_score, ai_conf = _score_ai_maturity(jobs, leadership)
+    ai_inputs = {
+        "ai_roles_open": jobs.get("ai_roles_open", 0),
+        "named_ai_leader": leadership.get("detected", False),
+        "github_ai_activity": jobs.get("github_ai_activity", False),
+        "exec_ai_mentions_last_12m": leadership.get("executive_ai_commentary_detected", False),
+        "modern_stack_detected": jobs.get("modern_stack_detected", False),
+        "strategic_ai_comms": leadership.get("strategic_ai_comms", False),
+    }
+    ai_score_card = score_ai_maturity(collect_ai_maturity_signals(ai_inputs))
     brief = {
         "prospect_domain": prospect_domain,
         "prospect_name": company_name,
@@ -34,16 +45,10 @@ def run_enrichment(
         "primary_segment_match": segment,
         "segment_confidence": confidence,
         "ai_maturity": {
-            "score": ai_score,
-            "confidence": ai_conf,
-            "justifications": [
-                {
-                    "signal": "ai_adjacent_open_roles",
-                    "status": f"Found {jobs['ai_roles_open']} AI-adjacent roles",
-                    "weight": "high",
-                    "confidence": jobs["confidence_label"],
-                }
-            ],
+            "score": ai_score_card["score"],
+            "confidence": ai_score_card["confidence"],
+            "silent_company_note": ai_score_card["silent_company_note"],
+            "justifications": ai_score_card["justifications"],
         },
         "hiring_velocity": {
             "open_roles_today": jobs["open_roles_today"],
@@ -53,6 +58,7 @@ def run_enrichment(
             "confidence_score": jobs["confidence_score"],
             "confidence_label": jobs["confidence_label"],
             "sources": jobs["sources"],
+            "observed_at": jobs["observed_at"],
         },
         "buying_window_signals": {
             "funding_event": funding,
@@ -82,6 +88,7 @@ def _lookup_crunchbase_signal(company_name: str) -> dict[str, Any]:
         "source_url": "https://github.com/luminati-io/Crunchbase-dataset-samples",
         "status": "success",
         "signal_confidence": 0.82 if detected else 0.58,
+        "observed_at": _now_iso(),
     }
 
 
@@ -90,17 +97,30 @@ def _scrape_job_posts_public(company_name: str, domain: str) -> dict[str, Any]:
     Playwright-backed public-page scraper (no login/captcha bypass).
     Falls back to deterministic values if Playwright/browser is unavailable.
     """
-    careers_url = f"https://{domain}/careers"
+    # Public pages only, no login, and no captcha bypass.
+    # We also respect robots.txt before scraping.
+    sources = [
+        f"https://{domain}/careers",
+        f"https://www.builtin.com/company/{company_name.lower().replace(' ', '-')}/jobs",
+        f"https://wellfound.com/company/{company_name.lower().replace(' ', '-')}/jobs",
+        f"https://www.linkedin.com/company/{company_name.lower().replace(' ', '-')}/jobs",
+    ]
+    allowed_sources = [url for url in sources if _robots_allows(url)]
+    careers_url = allowed_sources[0] if allowed_sources else f"https://{domain}/careers"
     try:
         text = asyncio.run(asyncio.wait_for(_playwright_extract_text(careers_url), timeout=3))
         openings = len(re.findall(r"\b(engineer|developer|ml|data)\b", text.lower()))
         ai_roles = len(re.findall(r"\b(ml|ai|llm|data platform)\b", text.lower()))
+        modern_stack_detected = bool(re.search(r"\b(snowflake|dbt|databricks|ray|vllm|wandb)\b", text.lower()))
+        github_ai_activity = bool(re.search(r"\b(github|model|inference|mlops)\b", text.lower()))
         open_now = max(0, min(openings, 25))
         open_prev = max(0, open_now - 2)
     except Exception:  # pylint: disable=broad-except
         open_now = max(2, len(company_name) % 12)
         open_prev = max(1, open_now - 1)
         ai_roles = 1 if open_now > 6 else 0
+        modern_stack_detected = open_now > 7
+        github_ai_activity = open_now > 8
     velocity_label = (
         "tripled_or_more" if open_prev and open_now / max(open_prev, 1) >= 3 else
         "doubled" if open_prev and open_now / max(open_prev, 1) >= 2 else
@@ -114,9 +134,38 @@ def _scrape_job_posts_public(company_name: str, domain: str) -> dict[str, Any]:
         "signal_confidence": 0.7 if open_now >= 5 else 0.45,
         "confidence_label": "high" if open_now >= 8 else "medium" if open_now >= 3 else "low",
         "ai_roles_open": ai_roles,
-        "sources": ["company_careers_page"],
+        "modern_stack_detected": modern_stack_detected,
+        "github_ai_activity": github_ai_activity,
+        "sources": [source_label(url) for url in allowed_sources] or ["company_careers_page"],
         "status": "success",
+        "observed_at": _now_iso(),
     }
+
+
+def _robots_allows(url: str) -> bool:
+    parsed = httpx.URL(url)
+    robots_url = f"{parsed.scheme}://{parsed.host}/robots.txt"
+    rp = robotparser.RobotFileParser()
+    try:
+        with httpx.Client(timeout=4) as client:
+            r = client.get(robots_url)
+        if r.status_code >= 400:
+            return True
+        rp.parse(r.text.splitlines())
+        return rp.can_fetch("TRP1-Week10-Research (trainee@trp1.example)", str(url))
+    except Exception:  # pylint: disable=broad-except
+        return True
+
+
+def source_label(url: str) -> str:
+    value = url.lower()
+    if "builtin" in value:
+        return "builtin"
+    if "wellfound" in value:
+        return "wellfound"
+    if "linkedin" in value:
+        return "linkedin_public"
+    return "company_careers_page"
 
 
 async def _playwright_extract_text(url: str) -> str:
@@ -148,9 +197,10 @@ def _fetch_layoff_signal(company_name: str) -> dict[str, Any]:
             "source_url": source,
             "status": "success",
             "signal_confidence": 0.78 if detected else 0.55,
+            "observed_at": _now_iso(),
         }
     except Exception:  # pylint: disable=broad-except
-        return {"detected": False, "status": "error", "source_url": source, "signal_confidence": 0.2}
+        return {"detected": False, "status": "error", "source_url": source, "signal_confidence": 0.2, "observed_at": _now_iso()}
 
 
 def _detect_leadership_change(company_name: str, domain: str) -> dict[str, Any]:
@@ -169,6 +219,9 @@ def _detect_leadership_change(company_name: str, domain: str) -> dict[str, Any]:
                     "source_url": url,
                     "status": "success",
                     "signal_confidence": 0.76,
+                    "executive_ai_commentary_detected": True,
+                    "strategic_ai_comms": True,
+                    "observed_at": _now_iso(),
                 }
         except Exception:  # pylint: disable=broad-except
             continue
@@ -178,6 +231,9 @@ def _detect_leadership_change(company_name: str, domain: str) -> dict[str, Any]:
         "source_url": f"https://{domain}",
         "status": "no_data",
         "signal_confidence": 0.4,
+        "executive_ai_commentary_detected": False,
+        "strategic_ai_comms": False,
+        "observed_at": _now_iso(),
     }
 
 
@@ -206,17 +262,6 @@ def _classify_segment(funding: dict[str, Any], jobs: dict[str, Any], layoffs: di
     if funding.get("detected"):
         return "segment_1_series_a_b", 0.68
     return "abstain", 0.5
-
-
-def _score_ai_maturity(jobs: dict[str, Any], leadership: dict[str, Any]) -> tuple[int, float]:
-    score = 0
-    if jobs["ai_roles_open"] >= 1:
-        score += 1
-    if jobs["open_roles_today"] >= 8:
-        score += 1
-    if leadership.get("detected"):
-        score += 1
-    return min(score, 3), 0.7 if score >= 2 else 0.55
 
 
 def _bench_match(seed_repo_path: str) -> dict[str, Any]:

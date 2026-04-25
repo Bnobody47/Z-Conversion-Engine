@@ -13,11 +13,13 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from agent.adapters.email import EmailMessage, parse_resend_webhook, send_email_with_provider
-from agent.adapters.hubspot import write_contact_event
+from agent.adapters.hubspot_mcp_client import create_or_update_contact, log_activity, write_enrichment_fields
 from agent.adapters.sms import parse_inbound_sms, send_sms
 from agent.config import settings
+from agent.enrichment.competitor_gap import build_competitor_gap
 from agent.enrichment.pipeline import run_enrichment
 from agent.services import event_bus
+from agent.services.conversation_service import decide_handoff_state
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -106,7 +108,17 @@ def _hubspot_write(event_type: str, lead_id: str, payload: dict[str, Any]) -> No
             "enrichment_timestamp": payload.get("created_at", _utc_now_iso()),
         }
     }
-    write_contact_event(hs_payload, access_token=settings.hubspot_access_token)
+    create_or_update_contact(hs_payload["properties"], access_token=settings.hubspot_access_token)
+    write_enrichment_fields(
+        {
+            "lead_id": lead_id,
+            "segment_match": hs_payload["properties"]["segment_match"],
+            "segment_confidence": hs_payload["properties"]["segment_confidence"],
+            "enrichment_timestamp": hs_payload["properties"]["enrichment_timestamp"],
+        },
+        access_token=settings.hubspot_access_token,
+    )
+    log_activity({"event_type": event_type, "lead_id": lead_id}, access_token=settings.hubspot_access_token)
 
 
 def _trace_interaction(lead_id: str, channel: str, latency_ms: int, metadata: dict[str, Any]) -> None:
@@ -138,7 +150,12 @@ def _mark_email_reply(lead_id: str) -> None:
 
 def _is_sms_allowed(lead_id: str) -> bool:
     state = _load_state()
-    return bool(state.get(lead_id, {}).get("has_email_reply"))
+    decision = decide_handoff_state(
+        lead_id=lead_id,
+        has_replied_email=bool(state.get(lead_id, {}).get("has_email_reply")),
+        prefers_sms=True,
+    )
+    return decision.allow_sms_send
 
 
 app = FastAPI(title="Z Conversion Engine", version="0.2.0")
@@ -158,61 +175,22 @@ def process_lead(prospect: ProspectIn) -> dict[str, Any]:
         prospect_domain=domain,
         seed_repo_path=settings.seed_repo_path,
     )
-    competitor_gap_brief = {
-        "prospect_domain": domain,
-        "prospect_sector": "b2b_software",
-        "generated_at": _utc_now_iso(),
-        "prospect_ai_maturity_score": hiring_signal_brief["ai_maturity"]["score"],
-        "sector_top_quartile_benchmark": 2.6,
-        "competitors_analyzed": [
-            {
-                "name": "Peer A",
-                "domain": "peer-a.com",
-                "ai_maturity_score": 3,
-                "ai_maturity_justification": ["Dedicated AI leadership", "Open MLOps roles"],
-                "headcount_band": "200_to_500",
-            },
-            {
-                "name": "Peer B",
-                "domain": "peer-b.com",
-                "ai_maturity_score": 2,
-                "ai_maturity_justification": ["AI-adjacent hiring present"],
-                "headcount_band": "80_to_200",
-            },
-            {
-                "name": "Peer C",
-                "domain": "peer-c.com",
-                "ai_maturity_score": 3,
-                "ai_maturity_justification": ["AI strategy blog and job posts"],
-                "headcount_band": "200_to_500",
-            },
-            {
-                "name": "Peer D",
-                "domain": "peer-d.com",
-                "ai_maturity_score": 2,
-                "ai_maturity_justification": ["Data platform hiring"],
-                "headcount_band": "80_to_200",
-            },
-            {
-                "name": "Peer E",
-                "domain": "peer-e.com",
-                "ai_maturity_score": 3,
-                "ai_maturity_justification": ["Named AI lead", "Public AI roadmap"],
-                "headcount_band": "500_to_2000",
-            },
-        ],
-        "gap_findings": [
-            {
-                "practice": "Dedicated MLOps role postings in last 90 days",
-                "peer_evidence": [
-                    {"competitor_name": "Peer A", "evidence": "MLOps engineer role open", "source_url": "https://peer-a.com/careers"},
-                    {"competitor_name": "Peer E", "evidence": "Platform ML role open", "source_url": "https://peer-e.com/jobs"},
-                ],
-                "prospect_state": "No public MLOps role signal observed.",
-                "confidence": "medium",
-            }
-        ],
-    }
+    candidate_companies = [
+        {"name": "Peer A", "domain": "peer-a.com", "headcount_band": "200_to_500", "ai_signals": {"ai_roles_open": 4, "named_ai_leader": True}, "sources": ["https://peer-a.com/jobs"]},
+        {"name": "Peer B", "domain": "peer-b.com", "headcount_band": "80_to_200", "ai_signals": {"ai_roles_open": 2, "named_ai_leader": False}, "sources": ["https://peer-b.com/team"]},
+        {"name": "Peer C", "domain": "peer-c.com", "headcount_band": "200_to_500", "ai_signals": {"ai_roles_open": 5, "named_ai_leader": True}, "sources": ["https://peer-c.com/blog"]},
+        {"name": "Peer D", "domain": "peer-d.com", "headcount_band": "80_to_200", "ai_signals": {"ai_roles_open": 1, "named_ai_leader": False}, "sources": ["https://peer-d.com/jobs"]},
+        {"name": "Peer E", "domain": "peer-e.com", "headcount_band": "500_to_2000", "ai_signals": {"ai_roles_open": 3, "named_ai_leader": True}, "sources": ["https://peer-e.com/news"]},
+    ]
+    competitor_gap_brief = build_competitor_gap(
+        prospect_domain=domain,
+        prospect_sector="b2b_software",
+        prospect_ai_signals={
+            "ai_roles_open": hiring_signal_brief["hiring_velocity"]["open_roles_today"],
+            "named_ai_leader": hiring_signal_brief["buying_window_signals"]["leadership_change"]["detected"],
+        },
+        candidate_companies=candidate_companies,
+    )
     qualification = {
         "qualified": hiring_signal_brief["primary_segment_match"] != "abstain",
         "qualification_score": 4 if hiring_signal_brief["primary_segment_match"] != "abstain" else 2,
@@ -248,7 +226,11 @@ def outbound_email(req: OutboundEmailRequest) -> dict[str, Any]:
     )
     if not result.get("ok"):
         _trace_interaction(req.lead_id, "email", 0, {"action": "send_failed", "error": result.get("error")})
-    _append_jsonl(DATA_DIR / "outbound_email.jsonl", {"lead_id": req.lead_id, "request": req.model_dump(), "result": result})
+    handoff = decide_handoff_state(lead_id=req.lead_id, has_replied_email=False, prefers_sms=False)
+    _append_jsonl(
+        DATA_DIR / "outbound_email.jsonl",
+        {"lead_id": req.lead_id, "request": req.model_dump(), "result": result, "cal_link": handoff.cal_link},
+    )
     return result
 
 
@@ -264,7 +246,11 @@ def outbound_sms(req: OutboundSmsRequest) -> dict[str, Any]:
         username=settings.africastalking_username,
         api_key=settings.africastalking_api_key,
     )
-    _append_jsonl(DATA_DIR / "outbound_sms.jsonl", {"lead_id": req.lead_id, "request": req.model_dump(), "result": result})
+    handoff = decide_handoff_state(lead_id=req.lead_id, has_replied_email=True, prefers_sms=True)
+    _append_jsonl(
+        DATA_DIR / "outbound_sms.jsonl",
+        {"lead_id": req.lead_id, "request": req.model_dump(), "result": result, "cal_link": handoff.cal_link},
+    )
     return result
 
 
@@ -286,7 +272,12 @@ def inbound_message(message: InboundMessage) -> dict[str, Any]:
     _trace_interaction(message.lead_id, message.channel, random.randint(900, 2900), {"action": "nurture_reply"})
     _hubspot_write("conversation_event", message.lead_id, {"channel": message.channel, "message": message.message})
     event_bus.emit("inbound.message", message.model_dump())
-    return {"status": "ok", "reply": "Thanks. I can share options and propose a 30-minute discovery call."}
+    handoff = decide_handoff_state(
+        lead_id=message.lead_id,
+        has_replied_email=(message.channel == "email"),
+        prefers_sms=(message.channel == "sms"),
+    )
+    return {"status": "ok", "reply": f"Thanks. I can share options and book a call: {handoff.cal_link}"}
 
 
 @app.post("/webhooks/resend")

@@ -1,10 +1,28 @@
 {
   "claims": [
     {
-      "claim_id": "placeholder_claim",
-      "description": "Replace with audited numeric claim",
-      "source_ref": "trace_or_invoice_ref",
-      "recompute_formula": "TBD"
+      "claim_id": "baseline_pass_at_1",
+      "description": "Provided baseline pass@1",
+      "source_ref": "Downloads/score_log.json",
+      "recompute_formula": "pass_at_1"
+    },
+    {
+      "claim_id": "baseline_p95_latency",
+      "description": "Provided baseline p95 latency",
+      "source_ref": "Downloads/score_log.json",
+      "recompute_formula": "p95_latency_seconds"
+    },
+    {
+      "claim_id": "mean_interaction_latency_ms",
+      "description": "Observed mean interaction latency",
+      "source_ref": "agent/data/interaction_traces.jsonl",
+      "recompute_formula": "avg(latency_ms)"
+    },
+    {
+      "claim_id": "delta_a_method_minus_baseline",
+      "description": "Method uplift over baseline",
+      "source_ref": "method/ablation_results.json",
+      "recompute_formula": "your_method.pass_at_1 - baseline.pass_at_1"
     }
   ]
 }

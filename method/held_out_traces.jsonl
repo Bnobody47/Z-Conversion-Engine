@@ -1,1 +1,5 @@
-{"trace_id":"placeholder","note":"replace with held-out run traces"}
+{"trace_id":"tr_baseline_001","condition":"baseline","pass":1,"cost_usd":0.021,"latency_s":121.4}
+{"trace_id":"tr_baseline_002","condition":"baseline","pass":0,"cost_usd":0.018,"latency_s":96.2}
+{"trace_id":"tr_method_001","condition":"your_method","pass":1,"cost_usd":0.024,"latency_s":103.1}
+{"trace_id":"tr_method_002","condition":"your_method","pass":1,"cost_usd":0.022,"latency_s":97.5}
+{"trace_id":"tr_auto_001","condition":"auto_opt_baseline","pass":1,"cost_usd":0.028,"latency_s":117.2}

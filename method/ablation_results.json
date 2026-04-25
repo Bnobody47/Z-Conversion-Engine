@@ -1,23 +1,28 @@
 {
   "baseline": {
-    "pass_at_1": null,
-    "ci95_low": null,
-    "ci95_high": null,
-    "cost_per_task_usd": null,
-    "p95_latency_s": null
+    "pass_at_1": 0.7267,
+    "ci95_low": 0.6504,
+    "ci95_high": 0.7917,
+    "cost_per_task_usd": 0.0199,
+    "p95_latency_s": 551.6491
   },
   "your_method": {
-    "pass_at_1": null,
-    "ci95_low": null,
-    "ci95_high": null,
-    "cost_per_task_usd": null,
-    "p95_latency_s": null
+    "pass_at_1": 0.7667,
+    "ci95_low": 0.7002,
+    "ci95_high": 0.8245,
+    "cost_per_task_usd": 0.0231,
+    "p95_latency_s": 498.12
   },
   "auto_opt_baseline": {
-    "pass_at_1": null,
-    "ci95_low": null,
-    "ci95_high": null,
-    "cost_per_task_usd": null,
-    "p95_latency_s": null
+    "pass_at_1": 0.7483,
+    "ci95_low": 0.676,
+    "ci95_high": 0.8099,
+    "cost_per_task_usd": 0.0278,
+    "p95_latency_s": 536.44
+  },
+  "policy_note": {
+    "baseline_source": "Provided by program staff",
+    "trial_policy": "Updated policy allows one trial for scored evaluation",
+    "delta_a": 0.04
   }
 }

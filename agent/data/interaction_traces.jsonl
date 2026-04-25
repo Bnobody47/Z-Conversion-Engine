@@ -29,3 +29,9 @@
 {"trace_id": "tr_e383d8fadf", "lead_id": "lead_bb867f7eff", "channel": "email", "latency_ms": 2351, "timestamp": "2026-04-23T15:54:22.242171+00:00", "metadata": {"action": "nurture_reply"}}
 {"trace_id": "tr_4d8f6f1edb", "lead_id": "lead_bb867f7eff", "channel": "sms", "latency_ms": 950, "timestamp": "2026-04-23T15:54:24.636981+00:00", "metadata": {"action": "opt_out"}}
 {"trace_id": "tr_a74f1fa937", "lead_id": "lead_bb867f7eff", "channel": "email", "latency_ms": 935, "timestamp": "2026-04-23T15:54:25.240404+00:00", "metadata": {"action": "calendar_webhook"}}
+{"trace_id": "tr_60b1361406", "lead_id": "lead_dbd5ad91ec", "channel": "email", "latency_ms": 2121, "timestamp": "2026-04-25T09:49:37.114754+00:00", "metadata": {"stage": "initial_enrichment"}}
+{"trace_id": "tr_d9c7d58675", "lead_id": "lead_dbd5ad91ec", "channel": "email", "latency_ms": 2409, "timestamp": "2026-04-25T09:49:39.636662+00:00", "metadata": {"action": "nurture_reply"}}
+{"trace_id": "tr_4a2ad22833", "lead_id": "lead_dbd5ad91ec", "channel": "sms", "latency_ms": 950, "timestamp": "2026-04-25T09:49:41.779625+00:00", "metadata": {"action": "opt_out"}}
+{"trace_id": "tr_737617504c", "lead_id": "lead_dbd5ad91ec", "channel": "email", "latency_ms": 916, "timestamp": "2026-04-25T09:49:42.464625+00:00", "metadata": {"action": "calendar_webhook"}}
+{"trace_id": "tr_125713b6e9", "lead_id": "lead_8514c9316e", "channel": "email", "latency_ms": 3329, "timestamp": "2026-04-25T10:16:06.118460+00:00", "metadata": {"stage": "initial_enrichment"}}
+{"trace_id": "tr_7badef3503", "lead_id": "lead_8514c9316e", "channel": "email", "latency_ms": 1954, "timestamp": "2026-04-25T10:16:07.346448+00:00", "metadata": {"action": "nurture_reply"}}

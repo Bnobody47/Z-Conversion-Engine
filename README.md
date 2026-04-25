@@ -1,109 +1,139 @@
-# Z Conversion Engine (Interim Submission: Acts I + II)
+# Z Conversion Engine
 
-This repository contains an interim-ready implementation for the Week 10 Conversion Engine challenge tailored to Tenacious Consulting and Outsourcing.
+Production-style multi-channel lead conversion engine for the TRP1 Week 10 Tenacious challenge.
 
 ## Architecture
 
 ```mermaid
-flowchart TD
-    A[Synthetic Prospect Input] --> B[Enrichment Pipeline]
-    B --> B1[Crunchbase-like Firmographics]
-    B --> B2[Hiring Signal Brief]
-    B --> B3[AI Maturity Score 0-3]
-    B --> B4[Competitor Gap Brief]
-    B --> C[Qualification + Guardrails]
-    C --> D[Email/SMS Conversation Handler]
-    D --> E[HubSpot Event Writer]
-    D --> F[Cal.com Booking Adapter]
-    D --> G[Trace Logger]
-    G --> H[Latency p50/p95 Metrics]
+flowchart LR
+    A[Prospect source queue] --> B[Signal enrichment pipeline]
+    B --> B1[Crunchbase + funding]
+    B --> B2[Playwright job scraping]
+    B --> B3[layoffs.fyi parser]
+    B --> B4[Leadership detection]
+    B --> C[AI maturity scoring 0-3 + confidence]
+    C --> D[Hiring signal brief]
+    C --> E[Competitor gap brief]
+    D --> F[Backbone LLM orchestration]
+    E --> F
+    F --> G[Channel handoff state machine]
+    G --> H[Email handler - Resend/MailerSend primary]
+    H --> I[Inbound email webhook]
+    G --> J[SMS handler - Africa's Talking warm follow-up]
+    J --> K[Inbound SMS webhook]
+    I --> L[HubSpot contact + activity + enrichment writes]
+    K --> L
+    I --> M[Cal.com booking link]
+    K --> M
+    M --> N[Cal.com confirmation webhook]
+    N --> L
+    L --> O[Observability traces + metrics]
 ```
 
-## Repository Layout
+### Design rationale
 
-- `agent/`
-  - `main.py`: FastAPI runtime app.
-  - `adapters/`: provider boundaries for email, SMS, HubSpot, calendar, tracing.
-  - `enrichment/`: Crunchbase, hiring-signal, and competitor-gap modules.
-  - `guardrails/`: policy checks (over-claim prevention hooks).
-  - `services/`: orchestration services.
-  - `models/`: schema layer.
-  - `config.py`, `requirements.txt`, `seed_demo_data.py`, `data/`.
-- `eval/`
-  - `run_tau2_baseline.py`: current baseline harness.
-  - `harness/`: dev-slice and held-out runner placeholders.
-  - `configs/`: pinned model settings template.
-  - `artifacts/`: generated eval outputs.
-  - `score_log.json`, `trace_log.jsonl`.
-- `probes/`: Act III files (`probe_library.md`, `failure_taxonomy.md`, `target_failure_mode.md`).
-- `method/`: Act IV files (`method.md`, `ablation_results.json`, `held_out_traces.jsonl`).
-- `evidence/`: claim-to-trace/invoice mapping files.
-- `memo/`: Act V memo draft.
-- `docs/`: submission checklist.
-- `scripts/`: bootstrap/export helper scripts.
-- Root docs: `baseline.md`, `interim_report.md`.
+- Email is primary for Tenacious personas (founders/CTOs/VP Eng), while SMS is explicitly gated as warm follow-up after an email reply.
+- Handoff logic is centralized in `agent/services/conversation_service.py` to avoid scattered channel decisions.
+- Enrichment runs before any outbound generation to keep messaging grounded and auditable.
+- HubSpot receives writes at multiple event points (enrichment, conversation events, consent changes, calendar events).
+- Cal.com link generation is included in both email and SMS paths for consistent booking UX.
+- Observability stores both interaction traces and evaluation traces, supporting evidence-graph backtracking.
 
-## Setup
+## Setup and Bootstrapping
 
-1. Create venv and install:
+### Prerequisites
+
+- Python `3.11+` (tested on 3.12)
+- Node.js `18+` (for optional HubSpot CLI operations)
+- Playwright browser runtime (`python -m playwright install`)
+- Docker Desktop (for optional local Cal.com stack)
+
+### Pinned dependencies
+
+See `agent/requirements.txt`:
+- `fastapi==0.115.12`
+- `uvicorn==0.34.2`
+- `pydantic==2.11.4`
+- `httpx==0.28.1`
+- `playwright==1.52.0`
+
+### Environment variables
+
+- `APP_ENV`: `dev`/`production` runtime mode.
+- `ENABLE_LIVE_SENDING`: controls real provider sends.
+- `TENACIOUS_OUTBOUND_ENABLED`: kill switch. When unset/false, outbound is routed to safe sink mode.
+- `EMAIL_PROVIDER`: `resend` or `mailersend`.
+- `RESEND_API_KEY`, `MAILERSEND_API_KEY`: email provider credentials.
+- `AFRICASTALKING_USERNAME`, `AFRICASTALKING_API_KEY`: SMS credentials.
+- `HUBSPOT_ACCESS_TOKEN`, `HUBSPOT_APP_ID`, `HUBSPOT_PORTAL_ID`: CRM integration.
+- `CALCOM_API_KEY`: calendar integration.
+- `OPENROUTER_API_KEY`: backbone model provider key.
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`: observability sink.
+- `SEED_REPO_PATH`: path to Tenacious seed data used by enrichment.
+
+### Run order (local)
+
+1. Create and activate environment:
    - `python -m venv .venv`
    - `.venv\Scripts\activate`
+2. Install dependencies:
    - `pip install -r agent\requirements.txt`
-2. Start API:
-   - `uvicorn agent.main:app --reload --port 8000`
-3. Seed interaction traces:
+3. Install Playwright browser:
+   - `python -m playwright install`
+4. Verify HubSpot auth:
+   - `python scripts\hubspot_check.py`
+5. Start API:
+   - `uvicorn agent.main:app --host 127.0.0.1 --port 8000`
+6. Optional smoke data:
    - `python agent\seed_demo_data.py`
-4. Generate eval artifacts:
-   - `python eval\run_tau2_baseline.py`
+7. API smoke test:
+   - `python -c "import httpx; print(httpx.get('http://127.0.0.1:8000/health').json())"`
 
-## Key Endpoints
+## Directory Index (Top-Level)
+
+- `.cursor/`: local editor/agent project metadata and command helpers.
+- `agent/`: runtime application code (API, adapters, enrichment, handoff logic, data output).
+- `eval/`: benchmark harness and score/trace artifacts.
+- `probes/`: adversarial probe library, taxonomy, and target failure analysis.
+- `method/`: mechanism design, ablation plan/results, held-out trace placeholders.
+- `evidence/`: evidence graph and invoice/cost mapping artifacts.
+- `memo/`: final decision memo draft and appendix source.
+- `docs/`: submission checklists and operator notes.
+- `scripts/`: utility scripts for checks and local bootstrap.
+- `zconver/`: extra local workspace copy; not used by the main runtime.
+- `baseline.md`: baseline summary document.
+- `interim_report.md`: interim report document.
+- `render.yaml`: Render deployment blueprint.
+
+## Key API Endpoints
 
 - `GET /health`
 - `POST /leads/process`
-  - Runs enrichment + qualification and writes a HubSpot event.
-  - Books a synthetic Cal event when lead is qualified.
-- `POST /webhooks/inbound`
-  - Handles `email` and `sms` interactions.
-  - STOP/HELP/UNSUB compliance handling included.
+- `POST /outbound/email`
+- `POST /outbound/sms`
 - `POST /webhooks/resend`
-  - Resend inbound/reply webhook endpoint.
 - `POST /webhooks/africastalking`
-  - Africa's Talking SMS callback endpoint.
 - `POST /webhooks/cal`
-  - Cal.com booking webhook endpoint.
 - `POST /webhooks/hubspot`
-  - Optional HubSpot app webhook endpoint.
 - `GET /metrics/latency`
-  - Returns count, p50, p95, and mean from interaction traces.
 
-## Interim Status (Acts I + II)
+## Handoff Notes: Known Limitations and Next Steps
 
-- Act I eval artifacts generated:
-  - `eval/score_log.json`
-  - `eval/trace_log.jsonl`
-- Act II stack scaffolded:
-  - Email/SMS webhook handling in place.
-  - HubSpot/Cal integration adapters implemented as structured event sinks.
-  - Enrichment pipeline produces `hiring_signal_brief` and `competitor_gap_brief`.
-- Latency computed from 20 interactions:
-  - p50: `2855ms`
-  - p95: `5787ms`
+- HubSpot integration currently supports direct API fallback; MCP-native runtime calls can be added as a drop-in client wrapper.
+- Playwright scraper includes robust fallback for inaccessible pages; add persistent crawl cache for large batch runs.
+- Competitor-gap peer evidence currently uses deterministic placeholders for some URLs; plug live evidence crawls for final production confidence.
+- Langfuse is configured by env but not yet mandatory in local smoke tests; enforce trace export in CI before final deployment.
+- `zconver/` duplicate workspace can be removed to reduce operator confusion.
 
-## Notes
+## Render Deployment
 
-- This submission is challenge-safe and synthetic-data-first.
-- Replace adapter sinks with live provider clients (Resend/MailerSend, Africa's Talking, HubSpot MCP, Cal.com API) by updating the adapter functions in `agent/main.py`.
-
-## Render Deployment (Recommended)
-
-This repo includes `render.yaml` for Render free-tier deployment.
-
-1. Push this repository to GitHub.
-2. In Render, choose **New +** -> **Blueprint** and select the repo.
-3. Render will read `render.yaml` and deploy `uvicorn agent.main:app`.
-4. After deploy, copy your public base URL, then register:
-   - Resend webhook: `https://<your-render-url>/webhooks/resend`
-   - Africa's Talking callback: `https://<your-render-url>/webhooks/africastalking`
-   - Cal.com webhook: `https://<your-render-url>/webhooks/cal`
-   - HubSpot webhook (optional): `https://<your-render-url>/webhooks/hubspot`
-5. Set env vars in Render dashboard using `.env.example` as reference.
+1. Push repo to GitHub.
+2. In Render: **New +** -> **Blueprint**.
+3. Confirm:
+   - Build: `pip install -r agent/requirements.txt`
+   - Start: `uvicorn agent.main:app --host 0.0.0.0 --port $PORT`
+4. Register webhooks:
+   - `https://<render-domain>/webhooks/resend`
+   - `https://<render-domain>/webhooks/africastalking`
+   - `https://<render-domain>/webhooks/cal`
+   - `https://<render-domain>/webhooks/hubspot`

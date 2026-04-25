@@ -1,1 +1,2 @@
 {"event": "bounce", "to_email": "x@example.com", "reason": "hard_bounce"}
+{"event": "bounce", "to_email": "demo@example.com", "reason": "hard"}
