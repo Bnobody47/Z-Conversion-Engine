@@ -35,3 +35,10 @@
 {"trace_id": "tr_737617504c", "lead_id": "lead_dbd5ad91ec", "channel": "email", "latency_ms": 916, "timestamp": "2026-04-25T09:49:42.464625+00:00", "metadata": {"action": "calendar_webhook"}}
 {"trace_id": "tr_125713b6e9", "lead_id": "lead_8514c9316e", "channel": "email", "latency_ms": 3329, "timestamp": "2026-04-25T10:16:06.118460+00:00", "metadata": {"stage": "initial_enrichment"}}
 {"trace_id": "tr_7badef3503", "lead_id": "lead_8514c9316e", "channel": "email", "latency_ms": 1954, "timestamp": "2026-04-25T10:16:07.346448+00:00", "metadata": {"action": "nurture_reply"}}
+{"trace_id": "tr_165e9392eb", "lead_id": "lead_3239d7f20b", "channel": "email", "latency_ms": 3394, "timestamp": "2026-04-25T10:30:12.280702+00:00", "metadata": {"stage": "initial_enrichment"}}
+{"trace_id": "tr_90229ff5ad", "lead_id": "lead_3239d7f20b", "channel": "email", "latency_ms": 1797, "timestamp": "2026-04-25T10:30:14.005004+00:00", "metadata": {"action": "nurture_reply"}}
+{"trace_id": "tr_112ce4c488", "lead_id": "lead_3239d7f20b", "channel": "sms", "latency_ms": 950, "timestamp": "2026-04-25T10:30:16.198281+00:00", "metadata": {"action": "opt_out"}}
+{"trace_id": "tr_340d7c4fe8", "lead_id": "lead_3239d7f20b", "channel": "email", "latency_ms": 727, "timestamp": "2026-04-25T10:30:16.858272+00:00", "metadata": {"action": "calendar_webhook"}}
+{"trace_id": "tr_a688d912d1", "lead_id": "lead_51e8aca7d1", "channel": "email", "latency_ms": 2632, "timestamp": "2026-04-25T10:49:52.078479+00:00", "metadata": {"stage": "initial_enrichment"}}
+{"trace_id": "tr_cdb07f450c", "lead_id": "lead_51e8aca7d1", "channel": "email", "latency_ms": 2208, "timestamp": "2026-04-25T10:49:52.099646+00:00", "metadata": {"action": "nurture_reply"}}
+{"trace_id": "tr_8f0b84523d", "lead_id": "lead_51e8aca7d1", "channel": "email", "latency_ms": 820, "timestamp": "2026-04-25T10:49:52.129884+00:00", "metadata": {"action": "calendar_webhook"}}

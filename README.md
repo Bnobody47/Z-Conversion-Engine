@@ -117,6 +117,24 @@ See `agent/requirements.txt`:
 - `POST /webhooks/hubspot`
 - `GET /metrics/latency`
 
+## Demo Script (Final Submission)
+
+1. Start backend:
+   - `uvicorn agent.main:app --host 0.0.0.0 --port 8010`
+2. Run deterministic smoke artifact generation:
+   - `python scripts\final_smoke_test.py`
+   - confirm output in `docs/final_smoke_test_output.json`
+3. Start frontend dashboard:
+   - `cd frontend`
+   - `npm install`
+   - `npm run dev`
+   - open `http://127.0.0.1:3000`
+4. In UI:
+   - click `Run Full Flow` for full test sequence
+   - or run step-by-step buttons and present each output card
+   - click `Load Final Smoke Artifact` to display stored deterministic output
+5. Capture evidence using `docs/final_submission_checklist.md`.
+
 ## Handoff Notes: Known Limitations and Next Steps
 
 - HubSpot integration currently supports direct API fallback; MCP-native runtime calls can be added as a drop-in client wrapper.

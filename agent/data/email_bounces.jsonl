@@ -1,2 +1,4 @@
 {"event": "bounce", "to_email": "x@example.com", "reason": "hard_bounce"}
 {"event": "bounce", "to_email": "demo@example.com", "reason": "hard"}
+{"event": "bounce", "to_email": "receiver@example.com", "reason": "hard_bounce"}
+{"event": "bounce", "to_email": "qa-receiver@example.com", "reason": "hard_bounce"}

@@ -25,6 +25,10 @@ Thumbs.db
 # Streamlit
 .streamlit/
 
+# Next.js frontend
+frontend/node_modules/
+frontend/.next/
+
 # Local demo artifacts (keep rubric artifacts tracked)
 validation_reports/demo_*.json
 violation_log/demo_*.jsonl

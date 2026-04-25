@@ -1,0 +1,106 @@
+{
+  "started_at": "2026-04-25T10:49:43.886252+00:00",
+  "base_url": "http://127.0.0.1:8010",
+  "health": {
+    "status_code": 200,
+    "body": {
+      "status": "ok",
+      "time": "2026-04-25T10:49:44.683129+00:00"
+    }
+  },
+  "leads_process": {
+    "status_code": 200,
+    "body": {
+      "lead_id": "lead_51e8aca7d1",
+      "qualified": true
+    }
+  },
+  "outbound_email": {
+    "status_code": 200,
+    "body": {
+      "ok": true,
+      "status": "sink_mode",
+      "reason": "TENACIOUS_OUTBOUND_ENABLED is not true"
+    }
+  },
+  "outbound_sms_before_reply": {
+    "status_code": 400,
+    "body": {
+      "detail": "SMS is warm-lead only; email reply required first"
+    }
+  },
+  "inbound_email_reply": {
+    "status_code": 200,
+    "body": {
+      "status": "ok",
+      "reply": "Thanks. I can share options and book a call: https://cal.com/tenacious/discovery?lead_id=lead_51e8aca7d1"
+    }
+  },
+  "outbound_sms_after_reply": {
+    "status_code": 200,
+    "body": {
+      "ok": true,
+      "status": "sink_mode",
+      "reason": "TENACIOUS_OUTBOUND_ENABLED is not true"
+    }
+  },
+  "resend_bounce_webhook": {
+    "status_code": 200,
+    "body": {
+      "status": "ok",
+      "event": "bounce_logged"
+    }
+  },
+  "cal_webhook": {
+    "status_code": 200,
+    "body": {
+      "status": "ok",
+      "message": "calendar event processed"
+    }
+  },
+  "latency": {
+    "status_code": 200,
+    "body": {
+      "count": 44,
+      "p50_ms": 2208,
+      "p95_ms": 5547,
+      "mean_ms": 2403.23
+    }
+  },
+  "hubspot_check": {
+    "status_code": 200,
+    "body": {
+      "results": [
+        {
+          "id": "765279129824",
+          "properties": {
+            "createdate": "2026-04-25T06:48:36.691Z",
+            "email": "bh@hubspot.com",
+            "firstname": "Brian",
+            "hs_object_id": "765279129824",
+            "lastmodifieddate": "2026-04-25T07:03:38.295Z",
+            "lastname": "Halligan (Sample Contact)"
+          },
+          "createdAt": "2026-04-25T06:48:36.691Z",
+          "updatedAt": "2026-04-25T07:03:38.295Z",
+          "archived": false,
+          "url": "https://app-eu1.hubspot.com/contacts/148344059/record/0-1/765279129824"
+        }
+      ],
+      "paging": {
+        "next": {
+          "after": "765279129825",
+          "link": "https://api.hubapi.com/crm/objects/v3/contacts?limit=1&after=765279129825"
+        }
+      }
+    }
+  },
+  "completed_at": "2026-04-25T10:49:53.472071+00:00",
+  "pass_summary": {
+    "api_health_ok": true,
+    "lead_created": true,
+    "sms_gate_before_reply": true,
+    "sms_allowed_after_reply": true,
+    "hubspot_reachable": true
+  }
+}
